@@ -51,6 +51,10 @@ npm run db:seed                 # roles, permissions, chart of accounts, rooms, 
 npm run dev
 ```
 
+### Running without a database
+
+If `DATABASE_URL` is not set (for example a plain Vercel deploy), the app starts a built-in in-memory PostgreSQL (PGlite), creates the schema and loads the demo hotel, so every page works with no setup. Data lives in server memory: changes you make are kept while the server stays warm and reset to the demo data after it restarts. Set `DATABASE_URL` to use a real PostgreSQL database and keep data permanently.
+
 ### Default logins
 
 The seed creates these users, all with the password `passpass@123` (set `SEED_DEFAULT_PASSWORD` to use a different one):
