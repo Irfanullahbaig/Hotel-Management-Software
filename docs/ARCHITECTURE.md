@@ -113,7 +113,9 @@ The full schema is modelled below. Tables marked **(P1)** exist in Phase 1 (`pri
 | event_venues, event_packages, event_bookings, event_items | Phase 5 |
 
 ### HR, inventory & procurement (Phase 4)
-departments, employees, employee_documents, shifts, shift_assignments, attendance, leave_types, leave_policies, leave_requests, leave_balances, payroll_runs, payroll_items, salary_components, loans, evaluations, disciplinary_records, training_records; inventory_categories, inventory_items, units, warehouses, stock_locations, stock_batches, inventory_transactions, stock_transfers, suppliers, purchase_requests, purchase_orders, purchase_order_items, goods_received_notes, supplier_invoices, purchase_returns.
+**Implemented (HR):** departments, employees (optional `user_id` link for self-service; salary, bank and national ID gated by `hr.view_sensitive`), shifts (minutes after midnight, overnight allowed), shift_assignments (weekly roster; falls back to the employee's default shift), attendance (one row per employee per day; worked, late and overtime minutes derived from the shift; late after a 10-minute grace), leave_types (yearly entitlement, paid/unpaid), leave_requests (exclusion constraint prevents overlapping pending/approved leave; entitlement checked per calendar year at request and approval), payroll_runs and payroll_items (one run per property per period; approval posts Dr 5000 / Cr 2300 / Cr 2200, payment posts Dr 2300 / Cr 1000 or 1010; attendance and leave in an approved period are locked). Leave balances are derived from requests rather than stored.
+
+**Still to build:** employee_documents, salary_components, loans, evaluations, disciplinary_records, training_records; inventory_categories, inventory_items, units, warehouses, stock_locations, stock_batches, inventory_transactions, stock_transfers, suppliers, purchase_requests, purchase_orders, purchase_order_items, goods_received_notes, supplier_invoices, purchase_returns.
 
 ### Channel & booking engine (Phase 5)
 channel_connections (credentials encrypted, status), channel_room_mappings, channel_rate_mappings, channel_sync_logs, ota_reservations_raw, rate_plans, packages, competitor_rates.
@@ -225,8 +227,8 @@ src/lib                             money, dates, formatting, zod schemas
 ## 13. Phase plan
 
 1. **Core hotel operations (this PR):** auth, RBAC, users/roles admin, sessions, audit log, dashboard, rooms & types & rates & status board, reservations (availability, pricing, groups, modify/extend/shorten/cancel, calendar with drag-and-drop), guests, front desk, check-in/out with folio, payments, invoice, ledger postings, auto housekeeping task.
-2. Housekeeping, maintenance, services, restaurant POS, kitchen display.
-3. Full accounting UI: chart of accounts, manual journals, AR/AP, expenses, bank, financial statements, period close.
-4. HR, attendance, leave, payroll, inventory, procurement.
-5. Booking engine, OTA adapters, CRM/loyalty, events, revenue management, consolidated multi-property.
+2. Housekeeping, maintenance, services, restaurant POS, kitchen display (**done**).
+3. Full accounting UI: chart of accounts, manual journals, AR/AP, expenses, bank, financial statements, period close, reports and CSV export (**done**).
+4. HR, attendance, leave, payroll, inventory, procurement (**done**).
+5. Booking engine, OTA adapters, CRM/loyalty, events, revenue management, consolidated multi-property (**done**; OTA sync and email/SMS delivery are honest stubs until credentials are configured).
 6. QA, security testing, performance, deployment.

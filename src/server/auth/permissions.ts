@@ -44,6 +44,7 @@ export const SPECIAL_PERMISSIONS: Record<string, string> = {
   "frontdesk.allow_balance": "Check out with an outstanding balance",
   "rooms.change_status": "Change room housekeeping and service status",
   "users.manage_sessions": "View and revoke user sessions",
+  "hr.view_sensitive": "View and edit salaries, bank details and national IDs",
 };
 
 export function allPermissionCodes(): { code: string; module: string; action: string; description: string }[] {
@@ -75,7 +76,7 @@ export const DEFAULT_ROLES: { key: string; name: string; description: string; pe
     key: "hotel_owner", name: "Hotel Owner", description: "Views and approves everything; no day-to-day edits",
     permissions: [
       ...Object.keys(MODULES).flatMap((m) => [`${m}.view`, `${m}.export`]),
-      "finance.approve", "payroll.approve", "procurement.approve", "finance.view_sensitive", "guests.view_sensitive",
+      "finance.approve", "payroll.approve", "procurement.approve", "finance.view_sensitive", "guests.view_sensitive", "hr.view_sensitive",
     ],
   },
   {
@@ -84,7 +85,7 @@ export const DEFAULT_ROLES: { key: string; name: string; description: string; pe
       ...all("reservations"), ...all("frontdesk"), ...all("rooms"), ...all("guests"), ...all("housekeeping"),
       ...all("maintenance"), ...all("restaurant"), ...all("services"), ...all("events"), ...all("sales"),
       ...all("reports"), "dashboard.view", "finance.view", "finance.export", "finance.approve", "finance.view_sensitive",
-      "hr.view", "payroll.view", "payroll.approve", "inventory.view", "procurement.view", "procurement.approve",
+      "hr.view", "hr.approve", "payroll.view", "payroll.approve", "inventory.view", "procurement.view", "procurement.approve",
       "users.view", "audit.view", "notifications.view", "settings.view",
       ...Object.keys(SPECIAL_PERMISSIONS).filter((c) => !c.startsWith("users.")),
     ],
@@ -111,13 +112,13 @@ export const DEFAULT_ROLES: { key: string; name: string; description: string; pe
   },
   {
     key: "accountant", name: "Accountant", description: "Maintains the books",
-    permissions: [...all("finance").filter((c) => c !== "finance.approve"), "finance.view_sensitive", ...view("reports", "reservations", "guests", "frontdesk", "dashboard", "payroll", "procurement"), "reports.export"],
+    permissions: [...all("finance").filter((c) => c !== "finance.approve"), "finance.view_sensitive", ...view("reports", "reservations", "guests", "frontdesk", "dashboard", "payroll", "procurement"), "reports.export", "payroll.export"],
   },
   {
     key: "auditor", name: "Auditor", description: "Read-only access to finance and audit trail",
     permissions: [...view("finance", "reports", "audit", "reservations", "frontdesk", "dashboard", "payroll", "procurement", "inventory"), "finance.export", "reports.export", "finance.view_sensitive"],
   },
-  { key: "hr_manager", name: "HR Manager", description: "Employees, attendance, leave and payroll", permissions: [...all("hr"), ...crud("payroll"), "dashboard.view", "reports.view", "notifications.view"] },
+  { key: "hr_manager", name: "HR Manager", description: "Employees, attendance, leave and payroll", permissions: [...all("hr"), "hr.view_sensitive", ...crud("payroll"), "payroll.export", "dashboard.view", "reports.view", "notifications.view"] },
   {
     key: "housekeeping_manager", name: "Housekeeping Manager", description: "Runs housekeeping",
     permissions: [...all("housekeeping"), "rooms.view", "rooms.change_status", "maintenance.view", "maintenance.create", "dashboard.view", "inventory.view", "notifications.view"],
@@ -128,6 +129,6 @@ export const DEFAULT_ROLES: { key: string; name: string; description: string; pe
   { key: "kitchen_staff", name: "Kitchen Staff", description: "Kitchen tickets", permissions: ["restaurant.view", "restaurant.edit", "dashboard.view"] },
   { key: "inventory_manager", name: "Inventory Manager", description: "Stock and stores", permissions: [...all("inventory"), "procurement.view", "procurement.create", "dashboard.view", "notifications.view"] },
   { key: "procurement_officer", name: "Procurement Officer", description: "Suppliers and purchasing", permissions: [...all("procurement").filter((c) => c !== "procurement.approve"), "inventory.view", "dashboard.view", "notifications.view"] },
-  { key: "sales_manager", name: "Sales & Marketing Manager", description: "Rates, promotions and CRM", permissions: [...all("sales"), "guests.view", "guests.edit", "reservations.view", "rooms.view", "reports.view", "reports.export", "dashboard.view"] },
+  { key: "sales_manager", name: "Sales & Marketing Manager", description: "Rates, promotions and CRM", permissions: [...all("sales"), ...all("events"), "guests.view", "guests.edit", "rooms.edit", "reservations.view", "rooms.view", "reports.view", "reports.export", "dashboard.view"] },
   { key: "security_staff", name: "Security Staff", description: "In-house guest list", permissions: ["frontdesk.view", "guests.view", "rooms.view", "dashboard.view"] },
 ];

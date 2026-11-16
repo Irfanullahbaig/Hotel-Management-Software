@@ -18,6 +18,10 @@ export function toMessage(e: unknown): string {
   const msg = e instanceof Error ? e.message : String(e);
   if (msg.includes("reservation_rooms_no_overlap")) return "That room is already booked for those dates.";
   if (msg.includes("unbalanced")) return "The accounting entry did not balance, so nothing was saved.";
+  if (msg.includes("Books are closed")) return "The books are closed for that date. Nothing was saved.";
+  if (msg.includes("stock_levels_non_negative")) return "There is not enough stock at that location.";
+  if (msg.includes("event_bookings_no_overlap")) return "That venue is already booked at that time.";
+  if (msg.includes("supplier_bills_paid")) return "The payment is more than the amount still owed on the bill.";
   if (msg.includes("NEXT_REDIRECT")) throw e;
   console.error(e);
   return "Something went wrong. Nothing was saved. Please try again.";
@@ -56,3 +60,21 @@ export const zs = {
 };
 
 export const formObject = (fd: FormData) => Object.fromEntries(fd.entries());
+
+export const zx = {
+  optDate: z.preprocess((v) => (v === "" || v == null ? undefined : v), zs.date.optional()),
+  method: z.enum(["CASH", "CARD", "BANK_TRANSFER", "MOBILE_WALLET", "CHEQUE", "ONLINE"], { message: "Choose a payment method" }),
+  optMethod: z.preprocess((v) => (v === "" || v == null ? undefined : v), z.enum(["CASH", "CARD", "BANK_TRANSFER", "MOBILE_WALLET", "CHEQUE", "ONLINE"]).optional()),
+  priority: z.enum(["LOW", "NORMAL", "HIGH", "URGENT"]),
+  num: (min = 0, max = 100_000_000) => z.coerce.number().min(min).max(max),
+  optNum: z.preprocess((v) => (v === "" || v == null ? undefined : v), z.coerce.number().optional()),
+  /** "HH:MM" → minutes after midnight. */
+  clock: z.string().regex(/^\d{1,2}:\d{2}$/, "Enter a time").transform((v) => { const [h, m] = v.split(":").map(Number); return h * 60 + m; }),
+};
+
+/** Repeated fields from a LinesForm, zipped into row objects. */
+export function lines(fd: FormData, cols: string[]) {
+  const arrays = cols.map((c) => fd.getAll(c).map(String));
+  const n = Math.max(0, ...arrays.map((a) => a.length));
+  return Array.from({ length: n }, (_, i) => Object.fromEntries(cols.map((c, j) => [c, arrays[j][i] ?? ""])));
+}

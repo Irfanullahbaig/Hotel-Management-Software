@@ -156,7 +156,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       )}
       {showFinance && (
         <p className="mt-4 text-xs text-ink-3">
-          Expense, department-cost and staff-performance analytics fill in as the Finance (Phase 3) and HR (Phase 4) modules start recording data. <LinkButton href="/finance" variant="ghost" size="sm">Open ledger</LinkButton>
+          Salaries post to the ledger when payroll is approved. Expense and department-cost analytics fill in as the Finance (Phase 3) module starts recording data. <LinkButton href="/finance" variant="ghost" size="sm">Open ledger</LinkButton>
         </p>
       )}
     </>
