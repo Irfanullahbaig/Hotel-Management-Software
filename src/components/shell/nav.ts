@@ -1,4 +1,4 @@
-export type NavItem = { href: string; label: string; icon: string; permission: string; phase?: number };
+export type NavItem = { href: string; label: string; icon: string; permission: string; phase?: number; pending?: boolean };
 
 /** Sidebar order follows the product spec. `phase` marks modules not yet shipped. */
 export const NAV: NavItem[] = [

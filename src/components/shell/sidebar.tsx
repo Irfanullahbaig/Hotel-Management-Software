@@ -27,7 +27,7 @@ export function Sidebar({ items, propertyName }: { items: NavItem[]; propertyNam
           >
             <Icon className="size-4 shrink-0" />
             <span className="truncate">{item.label}</span>
-            {item.phase && <span className="ml-auto rounded bg-muted px-1.5 text-[10px] text-ink-3">P{item.phase}</span>}
+            {item.pending ? <span className="ml-auto rounded bg-muted px-1.5 text-[10px] text-ink-3">Pending</span> : item.phase ? <span className="ml-auto rounded bg-muted px-1.5 text-[10px] text-ink-3">P{item.phase}</span> : null}
           </Link>
         );
       })}

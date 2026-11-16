@@ -92,6 +92,10 @@ The public booking engine is at `/book` (no login). Demo coupons: `WELCOME10`, `
 
 Optional integrations stay off (and say so) until configured: `OTA_WEBHOOK_SECRET` (enables the OTA webhook), `OTA_<CHANNEL>_API_KEY` (e.g. `OTA_BOOKING_COM_API_KEY`, enables channel sync), `EMAIL_PROVIDER` / `SMS_PROVIDER` (campaign delivery).
 
+### Module switch
+
+Front desk, rooms, reservations, guests, housekeeping, dashboard, Staff & HR, payroll and settings are always on. The other modules (group overview, maintenance, restaurant & POS, services, events, finance, inventory, procurement, sales, reports and the public `/book` page) are built but show as **Pending** until switched on with `HMS_ENABLED_MODULES`: `all` for everything, or a comma list such as `restaurant,inventory` (keys in `src/lib/modules.ts`). Nothing is deleted while a module is pending.
+
 ## Tests
 
 The workflow tests run against a real PostgreSQL database and **truncate it**, so they refuse to run unless the database name ends in `_test`:
