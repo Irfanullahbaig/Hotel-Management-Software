@@ -1,12 +1,13 @@
 import { prisma } from "@/lib/db";
 import { can, requireAuth } from "@/server/auth/context";
 import { NAV } from "@/components/shell/nav";
+import { pendingModuleFor } from "@/lib/modules";
 import { Sidebar } from "@/components/shell/sidebar";
 import { Topbar } from "@/components/shell/topbar";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const ctx = await requireAuth();
-  const items = NAV.filter((n) => can(ctx, n.permission));
+  const items = NAV.filter((n) => can(ctx, n.permission)).map((n) => ({ ...n, pending: !!pendingModuleFor(n.href) }));
   const unread = ctx.property
     ? await prisma.notification.count({ where: { propertyId: ctx.property.id, readAt: null, channel: "IN_APP", OR: [{ userId: null }, { userId: ctx.user.id }] } })
     : 0;

@@ -6,6 +6,8 @@ import { bootstrapProperty } from "@/server/services/setup";
 import { createReservation } from "@/server/services/reservations";
 import { checkIn, nightAudit } from "@/server/services/frontdesk";
 import { addDays, businessToday } from "@/lib/dates";
+import { recordAttendance, requestLeave, decideLeave } from "@/server/services/hr";
+import { seedOpsDemo } from "@/server/seed-ops";
 
 export async function seedDatabase(prisma: PrismaClient) {
   // Default logins. All share one password; override it with SEED_DEFAULT_PASSWORD.
@@ -55,11 +57,18 @@ export async function seedDatabase(prisma: PrismaClient) {
     { email: "frontdesk@hms.com", name: "Receptionist", role: "receptionist" },
     { email: "housekeeping@hms.com", name: "Housekeeping Manager", role: "housekeeping_manager" },
     { email: "accounts@hms.com", name: "Accountant", role: "accountant" },
+    { email: "hr@hms.com", name: "HR Manager", role: "hr_manager" },
+    { email: "restaurant@hms.com", name: "Restaurant Manager", role: "restaurant_manager" },
+    { email: "maintenance@hms.com", name: "Maintenance Manager", role: "maintenance_manager" },
+    { email: "stores@hms.com", name: "Inventory Manager", role: "inventory_manager" },
+    { email: "sales@hms.com", name: "Sales Manager", role: "sales_manager" },
   ];
+  // One hash shared by every default login: bcrypt is slow on purpose, and this runs on each cold start of the demo.
+  const passwordHash = await bcrypt.hash(defaultPassword, 12);
   for (const u of users) {
     const existing = await prisma.user.findUnique({ where: { email: u.email } });
     const user = existing ?? (await prisma.user.create({
-      data: { organizationId: org.id, email: u.email, name: u.name, isSuperAdmin: !!u.superAdmin, passwordHash: await bcrypt.hash(defaultPassword, 12), mustChangePassword: false },
+      data: { organizationId: org.id, email: u.email, name: u.name, isSuperAdmin: !!u.superAdmin, passwordHash, mustChangePassword: false },
     }));
     await prisma.userProperty.upsert({ where: { userId_propertyId: { userId: user.id, propertyId: property.id } }, update: {}, create: { userId: user.id, propertyId: property.id } });
     const role = roleByKey.get(u.role)!;
@@ -97,6 +106,12 @@ export async function seedDatabase(prisma: PrismaClient) {
 
   if (withDemo && (await prisma.reservation.count({ where: { propertyId: property.id } })) === 0) {
     await seedDemo(prisma, property.id, (await prisma.user.findUniqueOrThrow({ where: { email: "frontdesk@hms.com" } })).id);
+  }
+  if (withDemo && (await prisma.employee.count({ where: { propertyId: property.id } })) === 0) {
+    await seedHrDemo(prisma, property.id, (await prisma.user.findUniqueOrThrow({ where: { email: "hr@hms.com" } })).id);
+  }
+  if (withDemo && (await prisma.outlet.count({ where: { propertyId: property.id } })) === 0) {
+    await seedOpsDemo(prisma, property.id, (await prisma.user.findUniqueOrThrow({ where: { email: "gm@hms.com" } })).id);
   }
   console.log(`Seed complete. Default logins: ${users.map((u) => u.email).join(", ")}${process.env.SEED_DEFAULT_PASSWORD ? "" : ` / password ${defaultPassword}`}.`);
 }
@@ -139,3 +154,64 @@ async function seedDemo(prisma: PrismaClient, propertyId: string, userId: string
   }
 }
 
+/** Demo staff linked to the demo logins, with two weeks of attendance and some leave. */
+async function seedHrDemo(prisma: PrismaClient, propertyId: string, hrUserId: string) {
+  const today = businessToday("UTC");
+  const actor = { userId: hrUserId, propertyId };
+  const dep = new Map((await prisma.department.findMany({ where: { propertyId } })).map((d) => [d.code, d.id]));
+  const shift = new Map((await prisma.shift.findMany({ where: { propertyId } })).map((s) => [s.code, s]));
+  const leave = new Map((await prisma.leaveType.findMany({ where: { propertyId } })).map((l) => [l.code, l.id]));
+  const userId = async (email: string) => (await prisma.user.findUnique({ where: { email } }))?.id ?? null;
+  const staff = [
+    { first: "Grace", last: "Mensah", title: "General Manager", dep: "ADM", shift: "OFF", salary: 6500, months: 40, login: "gm@hms.com", gender: "Female" },
+    { first: "Daniel", last: "Okafor", title: "Front Office Supervisor", dep: "FO", shift: "MOR", salary: 2800, months: 26, login: "frontdesk@hms.com", gender: "Male" },
+    { first: "Priya", last: "Nair", title: "Receptionist", dep: "FO", shift: "EVE", salary: 2100, months: 14, gender: "Female" },
+    { first: "Tomás", last: "Silva", title: "Night Auditor", dep: "FO", shift: "NGT", salary: 2300, months: 20, gender: "Male" },
+    { first: "Mei", last: "Chen", title: "Executive Housekeeper", dep: "HK", shift: "MOR", salary: 2900, months: 33, login: "housekeeping@hms.com", gender: "Female" },
+    { first: "Joseph", last: "Banda", title: "Room Attendant", dep: "HK", shift: "MOR", salary: 1600, months: 9, gender: "Male" },
+    { first: "Fatima", last: "Zahra", title: "Room Attendant", dep: "HK", shift: "MOR", salary: 1600, months: 5, gender: "Female" },
+    { first: "Luca", last: "Bianchi", title: "Maintenance Technician", dep: "MNT", shift: "MOR", salary: 2200, months: 18, gender: "Male" },
+    { first: "Sarah", last: "Collins", title: "Accountant", dep: "FIN", shift: "OFF", salary: 3400, months: 22, login: "accounts@hms.com", gender: "Female" },
+    { first: "Aisha", last: "Rahman", title: "HR Manager", dep: "HR", shift: "OFF", salary: 3600, months: 30, login: "hr@hms.com", gender: "Female" },
+  ];
+  const ids: string[] = [];
+  for (const [i, s] of staff.entries()) {
+    const hire = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - s.months, 1 + (i % 20)));
+    const e = await prisma.employee.create({
+      data: {
+        propertyId, employeeNo: `EMP-${String(i + 1).padStart(4, "0")}`, firstName: s.first, lastName: s.last, jobTitle: s.title, gender: s.gender,
+        email: `${s.first.toLowerCase().normalize("NFD").replace(/[^a-z]/g, "")}.${s.last.toLowerCase()}@example.com`, phone: `+1 555 01${String(10 + i)}`,
+        departmentId: dep.get(s.dep), defaultShiftId: shift.get(s.shift)!.id, baseSalary: s.salary, hireDate: hire,
+        userId: s.login ? await userId(s.login) : null, bankName: "Lakeside Bank", bankAccount: `GB00LAKE${String(40000000 + i * 7919)}`, isDemo: true,
+      },
+    });
+    ids.push(e.id);
+  }
+  await prisma.sequence.upsert({ where: { propertyId_key: { propertyId, key: "EMP" } }, update: { value: staff.length }, create: { propertyId, key: "EMP", value: staff.length } });
+
+  // Two weeks of attendance (weekdays for office staff, every day for operations), with a few late arrivals and overtime.
+  for (let back = 14; back >= 1; back--) {
+    const date = addDays(today, -back);
+    const weekend = [0, 6].includes(date.getUTCDay());
+    await prisma.$transaction(async (tx) => {
+      for (const [i, s] of staff.entries()) {
+        const sh = shift.get(s.shift)!;
+        if (s.shift === "OFF" && weekend) { await recordAttendance(tx, actor, { employeeId: ids[i], date, status: "DAY_OFF", clockIn: null, clockOut: null }); continue; }
+        if ((i + back) % 7 === 0) { await recordAttendance(tx, actor, { employeeId: ids[i], date, status: "DAY_OFF", clockIn: null, clockOut: null }); continue; }
+        if (i === 7 && back === 3) { await recordAttendance(tx, actor, { employeeId: ids[i], date, status: "ON_LEAVE", clockIn: null, clockOut: null }); continue; }
+        if (i === 6 && back === 4) { await recordAttendance(tx, actor, { employeeId: ids[i], date, status: "ABSENT", clockIn: null, clockOut: null, note: "No call, no show" }); continue; }
+        const lateBy = (i * 3 + back) % 11 === 0 ? 25 : (i + back) % 5;
+        const extra = (i + back) % 6 === 0 ? 90 : (i + back) % 4;
+        await recordAttendance(tx, actor, { employeeId: ids[i], date, clockIn: (sh.startMinute + lateBy) % 1440, clockOut: (sh.endMinute + extra) % 1440 });
+      }
+    }, { timeout: 30000 });
+  }
+  // Leave: one approved annual leave next week, one pending sick leave, one approved unpaid day last week.
+  const hkUserId = await userId("housekeeping@hms.com");
+  await prisma.$transaction(async (tx) => {
+    await requestLeave(tx, actor, { employeeId: ids[2], leaveTypeId: leave.get("AL")!, startDate: addDays(today, 7), endDate: addDays(today, 11), reason: "Family visit", autoApprove: true });
+    await requestLeave(tx, { userId: hkUserId, propertyId }, { employeeId: ids[5], leaveTypeId: leave.get("SL")!, startDate: addDays(today, 1), endDate: addDays(today, 2), reason: "Dental surgery" });
+    const unpaid = await requestLeave(tx, actor, { employeeId: ids[7], leaveTypeId: leave.get("UL")!, startDate: addDays(today, -3), endDate: addDays(today, -3), reason: "Personal matter" });
+    await decideLeave(tx, actor, { requestId: unpaid.id, approve: true, note: "Approved, unpaid" });
+  }, { timeout: 30000 });
+}

@@ -1,3 +1,4 @@
+import { earnStayPoints } from "./crm";
 import { Prisma, type PaymentMethod } from "@prisma/client";
 import type { Tx } from "@/lib/db";
 import { D, round2 } from "@/lib/money";
@@ -151,6 +152,7 @@ export async function checkOut(tx: Tx, actor: Actor, input: CheckOutInput) {
   }
 
   const invoice = await generateInvoice(tx, actor, res.folio.id, `${res.guest.firstName} ${res.guest.lastName}${res.companyName ? `, ${res.companyName}` : ""}`);
+  await earnStayPoints(tx, actor, res.guestId, invoice);
   for (const l of lines) {
     await tx.reservationRoom.update({ where: { id: l.id }, data: { status: "CHECKED_OUT", checkedOutAt: new Date(), checkedOutBy: actor.userId } });
     if (l.roomId) {

@@ -92,6 +92,10 @@ export async function postJournal(tx: Tx, actor: Actor, input: PostInput) {
   const cr = sum(lines.map((l) => l.credit));
   if (!dr.equals(cr)) throw new BusinessError(`Unbalanced journal entry: debit ${dr.toFixed(2)} ≠ credit ${cr.toFixed(2)}.`);
 
+  const prop = await tx.property.findUniqueOrThrow({ where: { id: actor.propertyId }, select: { booksClosedThrough: true } });
+  if (prop.booksClosedThrough && input.date <= prop.booksClosedThrough) {
+    throw new BusinessError(`The books are closed through ${prop.booksClosedThrough.toISOString().slice(0, 10)}. Post this on a later date or reopen the period.`);
+  }
   const codes = [...new Set(lines.map((l) => l.account))];
   const accounts = await tx.account.findMany({ where: { propertyId: actor.propertyId, code: { in: codes }, isActive: true } });
   const byCode = new Map(accounts.map((a) => [a.code, a.id]));

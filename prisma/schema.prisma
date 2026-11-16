@@ -48,24 +48,57 @@ model Property {
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
 
-  userProperties  UserProperty[]
-  userRoles       UserRole[]
-  roomTypes       RoomType[]
-  rooms           Room[]
-  guests          Guest[]
-  reservations    Reservation[]
-  folios          Folio[]
-  payments        Payment[]
-  invoices        Invoice[]
-  accounts        Account[]
-  journalEntries  JournalEntry[]
-  housekeeping    HousekeepingTask[]
-  maintenance     MaintenanceRequest[]
-  sequences       Sequence[]
-  auditLogs       AuditLog[]
-  notifications   Notification[]
-  amenities       Amenity[]
-  roomBlocks      RoomBlock[]
+  userProperties       UserProperty[]
+  userRoles            UserRole[]
+  roomTypes            RoomType[]
+  rooms                Room[]
+  guests               Guest[]
+  reservations         Reservation[]
+  folios               Folio[]
+  payments             Payment[]
+  invoices             Invoice[]
+  accounts             Account[]
+  journalEntries       JournalEntry[]
+  housekeeping         HousekeepingTask[]
+  maintenance          MaintenanceRequest[]
+  sequences            Sequence[]
+  auditLogs            AuditLog[]
+  notifications        Notification[]
+  amenities            Amenity[]
+  roomBlocks           RoomBlock[]
+  departments          Department[]
+  employees            Employee[]
+  shifts               Shift[]
+  leaveTypes           LeaveType[]
+  attendance           Attendance[]
+  payrollRuns          PayrollRun[]
+  booksClosedThrough   DateTime?             @db.Date
+  loyaltyEarnRate      Decimal               @default(1) @db.Decimal(8, 3)
+  loyaltyPointValue    Decimal               @default(0.01) @db.Decimal(8, 4)
+  bookingEngineEnabled Boolean               @default(true)
+  maintenanceSchedules MaintenanceSchedule[]
+  lostFound            LostFoundItem[]
+  serviceItems         ServiceItem[]
+  serviceOrders        ServiceOrder[]
+  outlets              Outlet[]
+  menuCategories       MenuCategory[]
+  posOrders            PosOrder[]
+  expenses             Expense[]
+  budgets              Budget[]
+  stockLocations       StockLocation[]
+  inventoryItems       InventoryItem[]
+  inventoryTxns        InventoryTxn[]
+  suppliers            Supplier[]
+  purchaseRequests     PurchaseRequest[]
+  purchaseOrders       PurchaseOrder[]
+  supplierBills        SupplierBill[]
+  coupons              Coupon[]
+  campaigns            Campaign[]
+  feedback             GuestFeedback[]
+  eventVenues          EventVenue[]
+  eventBookings        EventBooking[]
+  channels             ChannelConnection[]
+  competitorRates      CompetitorRate[]
 
   @@unique([organizationId, code])
 }
@@ -79,29 +112,31 @@ enum UserStatus {
 }
 
 model User {
-  id                  String       @id @default(cuid())
-  organizationId      String
-  organization        Organization @relation(fields: [organizationId], references: [id])
-  email               String       @unique
-  name                String
-  phone               String?
-  passwordHash        String
-  status              UserStatus   @default(ACTIVE)
-  isSuperAdmin        Boolean      @default(false)
-  department          String?
-  mustChangePassword  Boolean      @default(false)
-  failedLoginCount    Int          @default(0)
-  lockedUntil         DateTime?
-  lastLoginAt         DateTime?
-  createdAt           DateTime     @default(now())
-  updatedAt           DateTime     @updatedAt
+  id                 String       @id @default(cuid())
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id])
+  email              String       @unique
+  name               String
+  phone              String?
+  passwordHash       String
+  status             UserStatus   @default(ACTIVE)
+  isSuperAdmin       Boolean      @default(false)
+  department         String?
+  mustChangePassword Boolean      @default(false)
+  failedLoginCount   Int          @default(0)
+  lockedUntil        DateTime?
+  lastLoginAt        DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
   roles               UserRole[]
   properties          UserProperty[]
   sessions            Session[]
   auditLogs           AuditLog[]
-  housekeepingTasks   HousekeepingTask[] @relation("HkAssignee")
+  housekeepingTasks   HousekeepingTask[]   @relation("HkAssignee")
   notifications       Notification[]
+  employees           Employee[]
+  maintenanceAssigned MaintenanceRequest[] @relation("MaintAssignee")
 }
 
 model Role {
@@ -141,7 +176,7 @@ model UserRole {
   id         String    @id @default(cuid())
   userId     String
   roleId     String
-  propertyId String?   // null = all properties the user can access
+  propertyId String? // null = all properties the user can access
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   role       Role      @relation(fields: [roleId], references: [id], onDelete: Cascade)
   property   Property? @relation(fields: [propertyId], references: [id], onDelete: Cascade)
@@ -190,7 +225,7 @@ model AuditLog {
   property   Property? @relation(fields: [propertyId], references: [id])
   userId     String?
   user       User?     @relation(fields: [userId], references: [id])
-  action     String    // e.g. reservation.create
+  action     String // e.g. reservation.create
   entityType String
   entityId   String?
   summary    String?
@@ -207,24 +242,24 @@ model AuditLog {
 model Sequence {
   propertyId String
   property   Property @relation(fields: [propertyId], references: [id])
-  key        String   // RES, INV, RCT
+  key        String // RES, INV, RCT
   value      Int      @default(0)
 
   @@id([propertyId, key])
 }
 
 model IdempotencyKey {
-  key        String   @id
-  scope      String
-  resultId   String?
-  createdAt  DateTime @default(now())
+  key       String   @id
+  scope     String
+  resultId  String?
+  createdAt DateTime @default(now())
 }
 
 model Notification {
   id         String    @id @default(cuid())
   propertyId String
   property   Property  @relation(fields: [propertyId], references: [id])
-  userId     String?   // null = broadcast to property
+  userId     String? // null = broadcast to property
   user       User?     @relation(fields: [userId], references: [id])
   type       String
   title      String
@@ -241,9 +276,9 @@ model Notification {
 // ───────────────────────── Rooms ─────────────────────────
 
 model Amenity {
-  id         String               @id @default(cuid())
+  id         String            @id @default(cuid())
   propertyId String
-  property   Property             @relation(fields: [propertyId], references: [id])
+  property   Property          @relation(fields: [propertyId], references: [id])
   name       String
   roomTypes  RoomTypeAmenity[]
 
@@ -251,28 +286,28 @@ model Amenity {
 }
 
 model RoomType {
-  id                String            @id @default(cuid())
-  propertyId        String
-  property          Property          @relation(fields: [propertyId], references: [id])
-  code              String
-  name              String
-  description       String?
-  baseOccupancy     Int               @default(2)
-  maxOccupancy      Int               @default(2)
-  maxAdults         Int               @default(2)
-  maxChildren       Int               @default(0)
-  bedConfiguration  String?
-  sizeSqm           Decimal?          @db.Decimal(8, 2)
-  basePrice         Decimal           @db.Decimal(14, 2)
-  extraAdultCharge  Decimal           @default(0) @db.Decimal(14, 2)
-  extraChildCharge  Decimal           @default(0) @db.Decimal(14, 2)
-  isActive          Boolean           @default(true)
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  rooms             Room[]
-  rates             RoomRate[]
-  amenities         RoomTypeAmenity[]
-  reservationRooms  ReservationRoom[]
+  id               String            @id @default(cuid())
+  propertyId       String
+  property         Property          @relation(fields: [propertyId], references: [id])
+  code             String
+  name             String
+  description      String?
+  baseOccupancy    Int               @default(2)
+  maxOccupancy     Int               @default(2)
+  maxAdults        Int               @default(2)
+  maxChildren      Int               @default(0)
+  bedConfiguration String?
+  sizeSqm          Decimal?          @db.Decimal(8, 2)
+  basePrice        Decimal           @db.Decimal(14, 2)
+  extraAdultCharge Decimal           @default(0) @db.Decimal(14, 2)
+  extraChildCharge Decimal           @default(0) @db.Decimal(14, 2)
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  rooms            Room[]
+  rates            RoomRate[]
+  amenities        RoomTypeAmenity[]
+  reservationRooms ReservationRoom[]
 
   @@unique([propertyId, code])
 }
@@ -294,18 +329,18 @@ enum RateKind {
 }
 
 model RoomRate {
-  id          String   @id @default(cuid())
-  roomTypeId  String
-  roomType    RoomType @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
-  name        String
-  kind        RateKind
-  startDate   DateTime? @db.Date
-  endDate     DateTime? @db.Date // inclusive
-  daysOfWeek  Int[]     // 0=Sun..6=Sat; empty = all days
-  price       Decimal   @db.Decimal(14, 2)
-  priority    Int       @default(0)
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
+  id         String    @id @default(cuid())
+  roomTypeId String
+  roomType   RoomType  @relation(fields: [roomTypeId], references: [id], onDelete: Cascade)
+  name       String
+  kind       RateKind
+  startDate  DateTime? @db.Date
+  endDate    DateTime? @db.Date // inclusive
+  daysOfWeek Int[] // 0=Sun..6=Sat; empty = all days
+  price      Decimal   @db.Decimal(14, 2)
+  priority   Int       @default(0)
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
 
   @@index([roomTypeId])
 }
@@ -331,23 +366,23 @@ enum ServiceStatus {
 }
 
 model Room {
-  id                 String             @id @default(cuid())
+  id                 String               @id @default(cuid())
   propertyId         String
-  property           Property           @relation(fields: [propertyId], references: [id])
+  property           Property             @relation(fields: [propertyId], references: [id])
   roomTypeId         String
-  roomType           RoomType           @relation(fields: [roomTypeId], references: [id])
+  roomType           RoomType             @relation(fields: [roomTypeId], references: [id])
   number             String
   name               String?
   floor              Int
   building           String?
   description        String?
-  occupancyStatus    OccupancyStatus    @default(VACANT)
-  housekeepingStatus HousekeepingStatus @default(INSPECTED)
-  serviceStatus      ServiceStatus      @default(IN_SERVICE)
+  occupancyStatus    OccupancyStatus      @default(VACANT)
+  housekeepingStatus HousekeepingStatus   @default(INSPECTED)
+  serviceStatus      ServiceStatus        @default(IN_SERVICE)
   statusNote         String?
-  isActive           Boolean            @default(true)
-  createdAt          DateTime           @default(now())
-  updatedAt          DateTime           @updatedAt
+  isActive           Boolean              @default(true)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
   statusLogs         RoomStatusLog[]
   reservationRooms   ReservationRoom[]
   housekeeping       HousekeepingTask[]
@@ -362,7 +397,7 @@ model RoomStatusLog {
   id        String   @id @default(cuid())
   roomId    String
   room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  field     String   // occupancy | housekeeping | service
+  field     String // occupancy | housekeeping | service
   fromValue String?
   toValue   String
   reason    String?
@@ -373,18 +408,18 @@ model RoomStatusLog {
 }
 
 model RoomBlock {
-  id         String    @id @default(cuid())
+  id         String        @id @default(cuid())
   propertyId String
-  property   Property  @relation(fields: [propertyId], references: [id])
+  property   Property      @relation(fields: [propertyId], references: [id])
   roomId     String
-  room       Room      @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room       Room          @relation(fields: [roomId], references: [id], onDelete: Cascade)
   reason     String
   kind       ServiceStatus
-  startDate  DateTime  @db.Date
-  endDate    DateTime  @db.Date // exclusive
+  startDate  DateTime      @db.Date
+  endDate    DateTime      @db.Date // exclusive
   releasedAt DateTime?
   createdBy  String?
-  createdAt  DateTime  @default(now())
+  createdAt  DateTime      @default(now())
 
   @@index([roomId, startDate])
 }
@@ -400,32 +435,34 @@ enum GuestCategory {
 }
 
 model Guest {
-  id           String          @id @default(cuid())
-  propertyId   String
-  property     Property        @relation(fields: [propertyId], references: [id])
-  firstName    String
-  lastName     String
-  email        String?
-  phone        String?
-  nationality  String?
-  country      String?
-  address      String?
-  city         String?
-  dateOfBirth  DateTime?       @db.Date
-  company      String?
-  category     GuestCategory   @default(REGULAR)
-  isVip        Boolean         @default(false)
-  preferences  String?
-  notes        String?
+  id                    String             @id @default(cuid())
+  propertyId            String
+  property              Property           @relation(fields: [propertyId], references: [id])
+  firstName             String
+  lastName              String
+  email                 String?
+  phone                 String?
+  nationality           String?
+  country               String?
+  address               String?
+  city                  String?
+  dateOfBirth           DateTime?          @db.Date
+  company               String?
+  category              GuestCategory      @default(REGULAR)
+  isVip                 Boolean            @default(false)
+  preferences           String?
+  notes                 String?
   emergencyContactName  String?
   emergencyContactPhone String?
-  marketingConsent Boolean     @default(false)
-  isDemo       Boolean         @default(false)
-  createdAt    DateTime        @default(now())
-  updatedAt    DateTime        @updatedAt
-  documents    GuestDocument[]
-  reservations Reservation[]
-  reservationGuests ReservationGuest[]
+  marketingConsent      Boolean            @default(false)
+  isDemo                Boolean            @default(false)
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+  documents             GuestDocument[]
+  reservations          Reservation[]
+  reservationGuests     ReservationGuest[]
+  loyalty               LoyaltyAccount?
+  feedback              GuestFeedback[]
 
   @@index([propertyId, lastName])
   @@index([propertyId, email])
@@ -433,16 +470,16 @@ model Guest {
 }
 
 model GuestDocument {
-  id         String    @id @default(cuid())
-  guestId    String
-  guest      Guest     @relation(fields: [guestId], references: [id], onDelete: Cascade)
-  type       String    // PASSPORT | NATIONAL_ID | DRIVING_LICENSE | OTHER
-  number     String
+  id             String    @id @default(cuid())
+  guestId        String
+  guest          Guest     @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  type           String // PASSPORT | NATIONAL_ID | DRIVING_LICENSE | OTHER
+  number         String
   issuingCountry String?
-  expiryDate DateTime? @db.Date
-  verifiedAt DateTime?
-  verifiedBy String?
-  createdAt  DateTime  @default(now())
+  expiryDate     DateTime? @db.Date
+  verifiedAt     DateTime?
+  verifiedBy     String?
+  createdAt      DateTime  @default(now())
 
   @@index([guestId])
 }
@@ -473,39 +510,39 @@ enum ReservationStatus {
 }
 
 model Reservation {
-  id              String            @id @default(cuid())
-  propertyId      String
-  property        Property          @relation(fields: [propertyId], references: [id])
-  reference       String
-  guestId         String
-  guest           Guest             @relation(fields: [guestId], references: [id])
-  source          BookingSource     @default(DIRECT)
-  status          ReservationStatus @default(CONFIRMED)
-  checkIn         DateTime          @db.Date
-  checkOut        DateTime          @db.Date
-  adults          Int               @default(1)
-  children        Int               @default(0)
-  isGroup         Boolean           @default(false)
-  groupName       String?
-  companyName     String?
-  specialRequests String?
-  notes           String?
-  discountAmount  Decimal           @default(0) @db.Decimal(14, 2)
-  roomTotal       Decimal           @default(0) @db.Decimal(14, 2)
-  extrasTotal     Decimal           @default(0) @db.Decimal(14, 2)
-  serviceCharge   Decimal           @default(0) @db.Decimal(14, 2)
-  taxTotal        Decimal           @default(0) @db.Decimal(14, 2)
-  grandTotal      Decimal           @default(0) @db.Decimal(14, 2)
-  cancelledAt     DateTime?
-  cancelReason    String?
-  isDemo          Boolean           @default(false)
-  createdById     String?
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
-  rooms           ReservationRoom[]
+  id               String             @id @default(cuid())
+  propertyId       String
+  property         Property           @relation(fields: [propertyId], references: [id])
+  reference        String
+  guestId          String
+  guest            Guest              @relation(fields: [guestId], references: [id])
+  source           BookingSource      @default(DIRECT)
+  status           ReservationStatus  @default(CONFIRMED)
+  checkIn          DateTime           @db.Date
+  checkOut         DateTime           @db.Date
+  adults           Int                @default(1)
+  children         Int                @default(0)
+  isGroup          Boolean            @default(false)
+  groupName        String?
+  companyName      String?
+  specialRequests  String?
+  notes            String?
+  discountAmount   Decimal            @default(0) @db.Decimal(14, 2)
+  roomTotal        Decimal            @default(0) @db.Decimal(14, 2)
+  extrasTotal      Decimal            @default(0) @db.Decimal(14, 2)
+  serviceCharge    Decimal            @default(0) @db.Decimal(14, 2)
+  taxTotal         Decimal            @default(0) @db.Decimal(14, 2)
+  grandTotal       Decimal            @default(0) @db.Decimal(14, 2)
+  cancelledAt      DateTime?
+  cancelReason     String?
+  isDemo           Boolean            @default(false)
+  createdById      String?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  rooms            ReservationRoom[]
   additionalGuests ReservationGuest[]
-  events          ReservationEvent[]
-  folio           Folio?
+  events           ReservationEvent[]
+  folio            Folio?
 
   @@unique([propertyId, reference])
   @@index([propertyId, checkIn])
@@ -541,21 +578,21 @@ model ReservationRoom {
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
   nights        ReservationNight[]
+  // Exclusion constraint "reservation_rooms_no_overlap" is added in a SQL migration.
 
   @@index([roomTypeId, checkIn, checkOut])
   @@index([roomId])
-  // Exclusion constraint "reservation_rooms_no_overlap" is added in a SQL migration.
 }
 
 model ReservationNight {
-  id                String          @id @default(cuid())
-  reservationRoomId String
-  reservationRoom   ReservationRoom @relation(fields: [reservationRoomId], references: [id], onDelete: Cascade)
-  date              DateTime        @db.Date
-  rate              Decimal         @db.Decimal(14, 2)
-  extraCharge       Decimal         @default(0) @db.Decimal(14, 2)
-  rateName          String?
-  postedAt          DateTime?
+  id                 String          @id @default(cuid())
+  reservationRoomId  String
+  reservationRoom    ReservationRoom @relation(fields: [reservationRoomId], references: [id], onDelete: Cascade)
+  date               DateTime        @db.Date
+  rate               Decimal         @db.Decimal(14, 2)
+  extraCharge        Decimal         @default(0) @db.Decimal(14, 2)
+  rateName           String?
+  postedAt           DateTime?
   folioTransactionId String?
 
   @@unique([reservationRoomId, date])
@@ -574,7 +611,7 @@ model ReservationEvent {
   id            String      @id @default(cuid())
   reservationId String
   reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
-  type          String      // CREATED | MODIFIED | ROOM_ASSIGNED | ROOM_CHANGED | EXTENDED | SHORTENED | CHECKED_IN | CHECKED_OUT | CANCELLED | PAYMENT
+  type          String // CREATED | MODIFIED | ROOM_ASSIGNED | ROOM_CHANGED | EXTENDED | SHORTENED | CHECKED_IN | CHECKED_OUT | CANCELLED | PAYMENT
   description   String
   data          Json?
   userId        String?
@@ -603,6 +640,7 @@ model Folio {
   transactions  FolioTransaction[]
   payments      Payment[]
   invoices      Invoice[]
+  eventBooking  EventBooking?
 
   @@unique([propertyId, number])
 }
@@ -665,7 +703,7 @@ model Payment {
   reference      String?
   notes          String?
   idempotencyKey String        @unique
-  appliedAt      DateTime?     // deposits transferred to AR at check-out
+  appliedAt      DateTime? // deposits transferred to AR at check-out
   journalEntryId String?
   receivedById   String?
   receivedAt     DateTime      @default(now())
@@ -675,22 +713,22 @@ model Payment {
 }
 
 model Invoice {
-  id          String        @id @default(cuid())
-  propertyId  String
-  property    Property      @relation(fields: [propertyId], references: [id])
-  folioId     String
-  folio       Folio         @relation(fields: [folioId], references: [id])
-  number      String
-  issuedAt    DateTime      @default(now())
-  subtotal    Decimal       @db.Decimal(14, 2)
-  discount    Decimal       @db.Decimal(14, 2)
-  serviceCharge Decimal     @db.Decimal(14, 2)
-  tax         Decimal       @db.Decimal(14, 2)
-  total       Decimal       @db.Decimal(14, 2)
-  paid        Decimal       @db.Decimal(14, 2)
-  balance     Decimal       @db.Decimal(14, 2)
-  billTo      String
-  items       InvoiceItem[]
+  id            String        @id @default(cuid())
+  propertyId    String
+  property      Property      @relation(fields: [propertyId], references: [id])
+  folioId       String
+  folio         Folio         @relation(fields: [folioId], references: [id])
+  number        String
+  issuedAt      DateTime      @default(now())
+  subtotal      Decimal       @db.Decimal(14, 2)
+  discount      Decimal       @db.Decimal(14, 2)
+  serviceCharge Decimal       @db.Decimal(14, 2)
+  tax           Decimal       @db.Decimal(14, 2)
+  total         Decimal       @db.Decimal(14, 2)
+  paid          Decimal       @db.Decimal(14, 2)
+  balance       Decimal       @db.Decimal(14, 2)
+  billTo        String
+  items         InvoiceItem[]
 
   @@unique([propertyId, number])
 }
@@ -733,21 +771,21 @@ model Account {
 }
 
 model JournalEntry {
-  id           String        @id @default(cuid())
-  propertyId   String
-  property     Property      @relation(fields: [propertyId], references: [id])
-  number       String
-  date         DateTime      @db.Date
-  memo         String
-  sourceType   String        // PAYMENT | FOLIO_CHARGE | DEPOSIT_TRANSFER | REVERSAL | MANUAL ...
-  sourceId     String
-  purpose      String        @default("main")
-  reversesId   String?       @unique
-  reverses     JournalEntry? @relation("Reversal", fields: [reversesId], references: [id])
-  reversedBy   JournalEntry? @relation("Reversal")
-  createdById  String?
-  postedAt     DateTime      @default(now())
-  lines        JournalLine[]
+  id          String        @id @default(cuid())
+  propertyId  String
+  property    Property      @relation(fields: [propertyId], references: [id])
+  number      String
+  date        DateTime      @db.Date
+  memo        String
+  sourceType  String // PAYMENT | FOLIO_CHARGE | DEPOSIT_TRANSFER | REVERSAL | MANUAL ...
+  sourceId    String
+  purpose     String        @default("main")
+  reversesId  String?       @unique
+  reverses    JournalEntry? @relation("Reversal", fields: [reversesId], references: [id])
+  reversedBy  JournalEntry? @relation("Reversal")
+  createdById String?
+  postedAt    DateTime      @default(now())
+  lines       JournalLine[]
 
   @@unique([propertyId, number])
   @@unique([propertyId, sourceType, sourceId, purpose])
@@ -787,45 +825,968 @@ enum Priority {
 }
 
 model HousekeepingTask {
-  id           String     @id @default(cuid())
-  propertyId   String
-  property     Property   @relation(fields: [propertyId], references: [id])
-  roomId       String
-  room         Room       @relation(fields: [roomId], references: [id])
-  type         String     // CHECKOUT_CLEAN | DAILY | DEEP_CLEAN | INSPECTION
-  status       TaskStatus @default(PENDING)
-  priority     Priority   @default(NORMAL)
-  assigneeId   String?
-  assignee     User?      @relation("HkAssignee", fields: [assigneeId], references: [id])
-  dueAt        DateTime?
-  notes        String?
-  sourceType   String?
-  sourceId     String?
-  startedAt    DateTime?
-  completedAt  DateTime?
-  inspectedAt  DateTime?
-  inspectedBy  String?
-  createdAt    DateTime   @default(now())
+  id          String     @id @default(cuid())
+  propertyId  String
+  property    Property   @relation(fields: [propertyId], references: [id])
+  roomId      String
+  room        Room       @relation(fields: [roomId], references: [id])
+  type        String // CHECKOUT_CLEAN | DAILY | DEEP_CLEAN | INSPECTION
+  status      TaskStatus @default(PENDING)
+  priority    Priority   @default(NORMAL)
+  assigneeId  String?
+  assignee    User?      @relation("HkAssignee", fields: [assigneeId], references: [id])
+  dueAt       DateTime?
+  notes       String?
+  sourceType  String?
+  sourceId    String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  inspectedAt DateTime?
+  inspectedBy String?
+  createdAt   DateTime   @default(now())
 
   @@unique([sourceType, sourceId])
   @@index([propertyId, status])
 }
 
 model MaintenanceRequest {
-  id          String     @id @default(cuid())
+  id          String               @id @default(cuid())
   propertyId  String
-  property    Property   @relation(fields: [propertyId], references: [id])
+  property    Property             @relation(fields: [propertyId], references: [id])
   roomId      String?
-  room        Room?      @relation(fields: [roomId], references: [id])
+  room        Room?                @relation(fields: [roomId], references: [id])
   category    String
   title       String
   description String?
-  priority    Priority   @default(NORMAL)
-  status      TaskStatus @default(PENDING)
-  blocksRoom  Boolean    @default(false)
+  priority    Priority             @default(NORMAL)
+  status      TaskStatus           @default(PENDING)
+  blocksRoom  Boolean              @default(false)
   reportedBy  String?
-  createdAt   DateTime   @default(now())
+  createdAt   DateTime             @default(now())
   resolvedAt  DateTime?
+  number      String?
+  assigneeId  String?
+  assignee    User?                @relation("MaintAssignee", fields: [assigneeId], references: [id])
+  dueAt       DateTime?
+  startedAt   DateTime?
+  resolution  String?
+  cost        Decimal              @default(0) @db.Decimal(14, 2)
+  costPaidBy  String? // CASH | BANK_TRANSFER | ON_ACCOUNT
+  costEntryId String?
+  scheduleId  String?
+  schedule    MaintenanceSchedule? @relation(fields: [scheduleId], references: [id])
 
   @@index([propertyId, status])
+}
+
+// ───────────────────────── Staff & HR (Phase 4) ─────────────────────────
+
+model Department {
+  id         String     @id @default(cuid())
+  propertyId String
+  property   Property   @relation(fields: [propertyId], references: [id])
+  code       String
+  name       String
+  isActive   Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  employees  Employee[]
+
+  @@unique([propertyId, code])
+}
+
+enum EmploymentType {
+  FULL_TIME
+  PART_TIME
+  CONTRACT
+  INTERN
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  ON_LEAVE
+  SUSPENDED
+  TERMINATED
+}
+
+model Employee {
+  id                    String            @id @default(cuid())
+  propertyId            String
+  property              Property          @relation(fields: [propertyId], references: [id])
+  employeeNo            String
+  userId                String? // optional link to a system login (self-service)
+  user                  User?             @relation(fields: [userId], references: [id])
+  firstName             String
+  lastName              String
+  email                 String?
+  phone                 String?
+  departmentId          String?
+  department            Department?       @relation(fields: [departmentId], references: [id])
+  jobTitle              String
+  employmentType        EmploymentType    @default(FULL_TIME)
+  status                EmployeeStatus    @default(ACTIVE)
+  hireDate              DateTime          @db.Date
+  terminationDate       DateTime?         @db.Date
+  terminationReason     String?
+  dateOfBirth           DateTime?         @db.Date
+  gender                String?
+  address               String?
+  nationalId            String? // sensitive
+  bankName              String? // sensitive
+  bankAccount           String? // sensitive
+  baseSalary            Decimal           @default(0) @db.Decimal(14, 2) // monthly
+  defaultShiftId        String?
+  defaultShift          Shift?            @relation("DefaultShift", fields: [defaultShiftId], references: [id])
+  emergencyContactName  String?
+  emergencyContactPhone String?
+  notes                 String?
+  isDemo                Boolean           @default(false)
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+  shiftAssignments      ShiftAssignment[]
+  attendance            Attendance[]
+  leaveRequests         LeaveRequest[]
+  payrollItems          PayrollItem[]
+
+  @@unique([propertyId, employeeNo])
+  @@unique([propertyId, userId])
+  @@index([propertyId, status])
+  @@index([departmentId])
+}
+
+model Shift {
+  id           String            @id @default(cuid())
+  propertyId   String
+  property     Property          @relation(fields: [propertyId], references: [id])
+  name         String
+  code         String
+  startMinute  Int // minutes after midnight, property local time
+  endMinute    Int // may be < startMinute for overnight shifts
+  breakMinutes Int               @default(0)
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  assignments  ShiftAssignment[]
+  defaultFor   Employee[]        @relation("DefaultShift")
+  attendance   Attendance[]
+
+  @@unique([propertyId, code])
+}
+
+model ShiftAssignment {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shiftId    String
+  shift      Shift    @relation(fields: [shiftId], references: [id])
+  date       DateTime @db.Date
+  createdAt  DateTime @default(now())
+
+  @@unique([employeeId, date])
+  @@index([shiftId, date])
+}
+
+enum AttendanceStatus {
+  PRESENT
+  LATE
+  HALF_DAY
+  ABSENT
+  ON_LEAVE
+  DAY_OFF
+}
+
+model Attendance {
+  id              String           @id @default(cuid())
+  propertyId      String
+  property        Property         @relation(fields: [propertyId], references: [id])
+  employeeId      String
+  employee        Employee         @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  date            DateTime         @db.Date
+  shiftId         String?
+  shift           Shift?           @relation(fields: [shiftId], references: [id])
+  clockInMinute   Int? // minutes after midnight on `date`, property local time
+  clockOutMinute  Int? // may exceed 1440 for overnight work
+  status          AttendanceStatus
+  workedMinutes   Int              @default(0)
+  lateMinutes     Int              @default(0)
+  overtimeMinutes Int              @default(0)
+  source          String           @default("MANUAL") // MANUAL | SELF
+  note            String?
+  recordedById    String?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([propertyId, date])
+}
+
+model LeaveType {
+  id         String         @id @default(cuid())
+  propertyId String
+  property   Property       @relation(fields: [propertyId], references: [id])
+  code       String
+  name       String
+  annualDays Int            @default(0) // 0 with isPaid=false means unlimited unpaid
+  isPaid     Boolean        @default(true)
+  isActive   Boolean        @default(true)
+  createdAt  DateTime       @default(now())
+  requests   LeaveRequest[]
+
+  @@unique([propertyId, code])
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+model LeaveRequest {
+  id            String      @id @default(cuid())
+  employeeId    String
+  employee      Employee    @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveTypeId   String
+  leaveType     LeaveType   @relation(fields: [leaveTypeId], references: [id])
+  startDate     DateTime    @db.Date
+  endDate       DateTime    @db.Date // inclusive
+  days          Int
+  reason        String?
+  status        LeaveStatus @default(PENDING)
+  requestedById String?
+  decidedById   String?
+  decidedAt     DateTime?
+  decisionNote  String?
+  createdAt     DateTime    @default(now())
+
+  @@index([employeeId, startDate])
+  @@index([status])
+}
+
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+  PAID
+}
+
+model PayrollRun {
+  id               String         @id @default(cuid())
+  propertyId       String
+  property         Property       @relation(fields: [propertyId], references: [id])
+  number           String
+  periodStart      DateTime       @db.Date
+  periodEnd        DateTime       @db.Date // inclusive
+  status           PayrollStatus  @default(DRAFT)
+  totalGross       Decimal        @default(0) @db.Decimal(14, 2)
+  totalWithholding Decimal        @default(0) @db.Decimal(14, 2)
+  totalNet         Decimal        @default(0) @db.Decimal(14, 2)
+  notes            String?
+  createdById      String?
+  approvedById     String?
+  approvedAt       DateTime?
+  paidById         String?
+  paidAt           DateTime?
+  paymentMethod    PaymentMethod?
+  accrualEntryId   String?
+  paymentEntryId   String?
+  createdAt        DateTime       @default(now())
+  items            PayrollItem[]
+
+  @@unique([propertyId, number])
+  @@unique([propertyId, periodStart, periodEnd])
+}
+
+model PayrollItem {
+  id               String     @id @default(cuid())
+  runId            String
+  run              PayrollRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  employeeId       String
+  employee         Employee   @relation(fields: [employeeId], references: [id])
+  monthlySalary    Decimal    @db.Decimal(14, 2)
+  periodDays       Int
+  employedDays     Int
+  basePay          Decimal    @db.Decimal(14, 2) // prorated for joiners / leavers
+  unpaidLeaveDays  Int        @default(0)
+  absentDays       Int        @default(0)
+  deductionForDays Decimal    @default(0) @db.Decimal(14, 2)
+  overtimeMinutes  Int        @default(0)
+  overtimePay      Decimal    @default(0) @db.Decimal(14, 2)
+  allowances       Decimal    @default(0) @db.Decimal(14, 2)
+  gross            Decimal    @db.Decimal(14, 2)
+  withholding      Decimal    @default(0) @db.Decimal(14, 2) // tax & statutory, credited to Taxes Payable
+  net              Decimal    @db.Decimal(14, 2)
+  note             String?
+
+  @@unique([runId, employeeId])
+}
+
+// ───────────────────────── Phase 2: maintenance, services, restaurant ─────────────────────────
+
+model MaintenanceSchedule {
+  id         String               @id @default(cuid())
+  propertyId String
+  property   Property             @relation(fields: [propertyId], references: [id])
+  title      String
+  category   String
+  roomId     String?
+  equipment  String?
+  everyDays  Int
+  nextDue    DateTime             @db.Date
+  priority   Priority             @default(NORMAL)
+  isActive   Boolean              @default(true)
+  createdAt  DateTime             @default(now())
+  requests   MaintenanceRequest[]
+}
+
+enum LostFoundStatus {
+  STORED
+  RETURNED
+  DISPOSED
+}
+
+model LostFoundItem {
+  id          String          @id @default(cuid())
+  propertyId  String
+  property    Property        @relation(fields: [propertyId], references: [id])
+  description String
+  location    String
+  roomId      String?
+  foundAt     DateTime        @default(now())
+  foundBy     String?
+  status      LostFoundStatus @default(STORED)
+  returnedTo  String?
+  closedAt    DateTime?
+  notes       String?
+}
+
+model ServiceItem {
+  id             String         @id @default(cuid())
+  propertyId     String
+  property       Property       @relation(fields: [propertyId], references: [id])
+  category       String // LAUNDRY | SPA | TRANSPORT | CONFERENCE | OTHER
+  name           String
+  price          Decimal        @db.Decimal(14, 2)
+  revenueAccount String         @default("4600")
+  isActive       Boolean        @default(true)
+  createdAt      DateTime       @default(now())
+  orders         ServiceOrder[]
+
+  @@unique([propertyId, name])
+}
+
+enum ServiceOrderStatus {
+  REQUESTED
+  IN_PROGRESS
+  DELIVERED
+  CANCELLED
+}
+
+model ServiceOrder {
+  id             String             @id @default(cuid())
+  propertyId     String
+  property       Property           @relation(fields: [propertyId], references: [id])
+  number         String
+  serviceItemId  String
+  serviceItem    ServiceItem        @relation(fields: [serviceItemId], references: [id])
+  quantity       Int                @default(1)
+  unitPrice      Decimal            @db.Decimal(14, 2)
+  amount         Decimal            @db.Decimal(14, 2)
+  reservationId  String?
+  guestName      String
+  roomNumber     String?
+  chargeTo       String // ROOM | DIRECT
+  paymentMethod  PaymentMethod?
+  status         ServiceOrderStatus @default(REQUESTED)
+  scheduledFor   DateTime?
+  notes          String?
+  createdById    String?
+  deliveredAt    DateTime?
+  journalEntryId String?
+  createdAt      DateTime           @default(now())
+
+  @@unique([propertyId, number])
+  @@index([propertyId, status])
+}
+
+model Outlet {
+  id             String        @id @default(cuid())
+  propertyId     String
+  property       Property      @relation(fields: [propertyId], references: [id])
+  code           String
+  name           String
+  kind           String        @default("RESTAURANT") // RESTAURANT | BAR | CAFE | ROOM_SERVICE
+  revenueAccount String        @default("4100")
+  isActive       Boolean       @default(true)
+  tables         DiningTable[]
+  orders         PosOrder[]
+
+  @@unique([propertyId, code])
+}
+
+model DiningTable {
+  id       String     @id @default(cuid())
+  outletId String
+  outlet   Outlet     @relation(fields: [outletId], references: [id], onDelete: Cascade)
+  name     String
+  seats    Int        @default(4)
+  isActive Boolean    @default(true)
+  orders   PosOrder[]
+
+  @@unique([outletId, name])
+}
+
+model MenuCategory {
+  id         String     @id @default(cuid())
+  propertyId String
+  property   Property   @relation(fields: [propertyId], references: [id])
+  name       String
+  sortOrder  Int        @default(0)
+  items      MenuItem[]
+
+  @@unique([propertyId, name])
+}
+
+model MenuItem {
+  id          String         @id @default(cuid())
+  categoryId  String
+  category    MenuCategory   @relation(fields: [categoryId], references: [id])
+  name        String
+  description String?
+  price       Decimal        @db.Decimal(14, 2)
+  station     String         @default("KITCHEN") // KITCHEN | BAR
+  isAvailable Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  orderItems  PosOrderItem[]
+
+  @@unique([categoryId, name])
+}
+
+enum PosOrderStatus {
+  OPEN
+  SETTLED
+  VOID
+}
+
+model PosOrder {
+  id             String         @id @default(cuid())
+  propertyId     String
+  property       Property       @relation(fields: [propertyId], references: [id])
+  number         String
+  outletId       String
+  outlet         Outlet         @relation(fields: [outletId], references: [id])
+  tableId        String?
+  table          DiningTable?   @relation(fields: [tableId], references: [id])
+  kind           String         @default("DINE_IN") // DINE_IN | TAKEAWAY | ROOM_SERVICE
+  reservationId  String?
+  guestName      String?
+  roomNumber     String?
+  covers         Int            @default(1)
+  status         PosOrderStatus @default(OPEN)
+  subtotal       Decimal        @default(0) @db.Decimal(14, 2)
+  discount       Decimal        @default(0) @db.Decimal(14, 2)
+  serviceCharge  Decimal        @default(0) @db.Decimal(14, 2)
+  tax            Decimal        @default(0) @db.Decimal(14, 2)
+  total          Decimal        @default(0) @db.Decimal(14, 2)
+  settledTo      String? // ROOM | PAYMENT
+  paymentMethod  PaymentMethod?
+  journalEntryId String?
+  voidReason     String?
+  openedById     String?
+  settledById    String?
+  openedAt       DateTime       @default(now())
+  settledAt      DateTime?
+  items          PosOrderItem[]
+
+  @@unique([propertyId, number])
+  @@index([propertyId, status])
+}
+
+enum KitchenStatus {
+  NEW
+  PREPARING
+  READY
+  SERVED
+  VOID
+}
+
+model PosOrderItem {
+  id         String        @id @default(cuid())
+  orderId    String
+  order      PosOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId String
+  menuItem   MenuItem      @relation(fields: [menuItemId], references: [id])
+  name       String
+  station    String
+  quantity   Int
+  unitPrice  Decimal       @db.Decimal(14, 2)
+  amount     Decimal       @db.Decimal(14, 2)
+  notes      String?
+  status     KitchenStatus @default(NEW)
+  createdAt  DateTime      @default(now())
+  readyAt    DateTime?
+
+  @@index([status])
+}
+
+// ───────────────────────── Phase 3: accounting ─────────────────────────
+
+model Expense {
+  id             String    @id @default(cuid())
+  propertyId     String
+  property       Property  @relation(fields: [propertyId], references: [id])
+  number         String
+  date           DateTime  @db.Date
+  account        String // expense account code
+  description    String
+  amount         Decimal   @db.Decimal(14, 2)
+  paidBy         String // CASH | BANK_TRANSFER | ON_ACCOUNT
+  supplierId     String?
+  supplier       Supplier? @relation(fields: [supplierId], references: [id])
+  reference      String?
+  journalEntryId String?
+  billId         String?   @unique
+  createdById    String?
+  createdAt      DateTime  @default(now())
+
+  @@unique([propertyId, number])
+}
+
+model Budget {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id])
+  year       Int
+  account    String
+  amount     Decimal  @db.Decimal(14, 2) // annual
+
+  @@unique([propertyId, year, account])
+}
+
+// ───────────────────────── Phase 4: inventory & procurement ─────────────────────────
+
+model StockLocation {
+  id             String          @id @default(cuid())
+  propertyId     String
+  property       Property        @relation(fields: [propertyId], references: [id])
+  code           String
+  name           String
+  isActive       Boolean         @default(true)
+  levels         StockLevel[]
+  txnsFrom       InventoryTxn[]  @relation("TxnFrom")
+  txnsTo         InventoryTxn[]  @relation("TxnTo")
+  purchaseOrders PurchaseOrder[]
+
+  @@unique([propertyId, code])
+}
+
+model InventoryItem {
+  id             String              @id @default(cuid())
+  propertyId     String
+  property       Property            @relation(fields: [propertyId], references: [id])
+  sku            String
+  name           String
+  category       String // FOOD | BEVERAGE | HOUSEKEEPING | AMENITIES | MAINTENANCE | OFFICE | OTHER
+  unit           String              @default("pcs")
+  reorderLevel   Decimal             @default(0) @db.Decimal(14, 3)
+  avgCost        Decimal             @default(0) @db.Decimal(14, 4)
+  expenseAccount String              @default("5900")
+  isActive       Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  levels         StockLevel[]
+  txns           InventoryTxn[]
+  poLines        PurchaseOrderLine[]
+  requests       PurchaseRequest[]
+
+  @@unique([propertyId, sku])
+}
+
+model StockLevel {
+  itemId     String
+  item       InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  locationId String
+  location   StockLocation @relation(fields: [locationId], references: [id])
+  quantity   Decimal       @default(0) @db.Decimal(14, 3)
+
+  @@id([itemId, locationId])
+}
+
+model InventoryTxn {
+  id             String         @id @default(cuid())
+  propertyId     String
+  property       Property       @relation(fields: [propertyId], references: [id])
+  number         String
+  type           String // RECEIPT | ISSUE | TRANSFER | ADJUSTMENT
+  itemId         String
+  item           InventoryItem  @relation(fields: [itemId], references: [id])
+  fromLocationId String?
+  fromLocation   StockLocation? @relation("TxnFrom", fields: [fromLocationId], references: [id])
+  toLocationId   String?
+  toLocation     StockLocation? @relation("TxnTo", fields: [toLocationId], references: [id])
+  quantity       Decimal        @db.Decimal(14, 3) // always positive; direction from type / locations
+  unitCost       Decimal        @db.Decimal(14, 4)
+  totalCost      Decimal        @db.Decimal(14, 2)
+  date           DateTime       @db.Date
+  department     String?
+  account        String? // expense / offset account for ISSUE, ADJUSTMENT, direct RECEIPT
+  reason         String?
+  sourceType     String?
+  sourceId       String?
+  journalEntryId String?
+  createdById    String?
+  createdAt      DateTime       @default(now())
+
+  @@unique([propertyId, number])
+  @@index([itemId, createdAt])
+}
+
+model Supplier {
+  id               String          @id @default(cuid())
+  propertyId       String
+  property         Property        @relation(fields: [propertyId], references: [id])
+  name             String
+  contactName      String?
+  email            String?
+  phone            String?
+  address          String?
+  taxId            String?
+  paymentTermsDays Int             @default(30)
+  isActive         Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  purchaseOrders   PurchaseOrder[]
+  bills            SupplierBill[]
+  expenses         Expense[]
+
+  @@unique([propertyId, name])
+}
+
+enum PurchaseRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ORDERED
+}
+
+model PurchaseRequest {
+  id              String                @id @default(cuid())
+  propertyId      String
+  property        Property              @relation(fields: [propertyId], references: [id])
+  itemId          String
+  item            InventoryItem         @relation(fields: [itemId], references: [id])
+  quantity        Decimal               @db.Decimal(14, 3)
+  reason          String?
+  department      String?
+  status          PurchaseRequestStatus @default(PENDING)
+  requestedById   String?
+  decidedById     String?
+  decidedAt       DateTime?
+  purchaseOrderId String?
+  createdAt       DateTime              @default(now())
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+model PurchaseOrder {
+  id           String              @id @default(cuid())
+  propertyId   String
+  property     Property            @relation(fields: [propertyId], references: [id])
+  number       String
+  supplierId   String
+  supplier     Supplier            @relation(fields: [supplierId], references: [id])
+  locationId   String
+  location     StockLocation       @relation(fields: [locationId], references: [id])
+  status       PurchaseOrderStatus @default(DRAFT)
+  orderDate    DateTime            @db.Date
+  expectedDate DateTime?           @db.Date
+  notes        String?
+  total        Decimal             @default(0) @db.Decimal(14, 2)
+  createdById  String?
+  approvedById String?
+  approvedAt   DateTime?
+  createdAt    DateTime            @default(now())
+  lines        PurchaseOrderLine[]
+  receipts     GoodsReceipt[]
+
+  @@unique([propertyId, number])
+}
+
+model PurchaseOrderLine {
+  id           String             @id @default(cuid())
+  orderId      String
+  order        PurchaseOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  itemId       String
+  item         InventoryItem      @relation(fields: [itemId], references: [id])
+  quantity     Decimal            @db.Decimal(14, 3)
+  unitCost     Decimal            @db.Decimal(14, 4)
+  receivedQty  Decimal            @default(0) @db.Decimal(14, 3)
+  receiptLines GoodsReceiptLine[]
+}
+
+model GoodsReceipt {
+  id           String             @id @default(cuid())
+  orderId      String
+  order        PurchaseOrder      @relation(fields: [orderId], references: [id])
+  number       String
+  date         DateTime           @db.Date
+  supplierRef  String?
+  notes        String?
+  total        Decimal            @db.Decimal(14, 2)
+  receivedById String?
+  createdAt    DateTime           @default(now())
+  lines        GoodsReceiptLine[]
+  bill         SupplierBill?
+}
+
+model GoodsReceiptLine {
+  id        String            @id @default(cuid())
+  receiptId String
+  receipt   GoodsReceipt      @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  poLineId  String
+  poLine    PurchaseOrderLine @relation(fields: [poLineId], references: [id])
+  quantity  Decimal           @db.Decimal(14, 3)
+  unitCost  Decimal           @db.Decimal(14, 4)
+}
+
+enum BillStatus {
+  OPEN
+  PARTIALLY_PAID
+  PAID
+}
+
+model SupplierBill {
+  id          String            @id @default(cuid())
+  propertyId  String
+  property    Property          @relation(fields: [propertyId], references: [id])
+  number      String
+  supplierId  String
+  supplier    Supplier          @relation(fields: [supplierId], references: [id])
+  receiptId   String?           @unique
+  receipt     GoodsReceipt?     @relation(fields: [receiptId], references: [id])
+  supplierRef String?
+  description String
+  billDate    DateTime          @db.Date
+  dueDate     DateTime          @db.Date
+  amount      Decimal           @db.Decimal(14, 2)
+  paid        Decimal           @default(0) @db.Decimal(14, 2)
+  status      BillStatus        @default(OPEN)
+  createdAt   DateTime          @default(now())
+  payments    SupplierPayment[]
+
+  @@unique([propertyId, number])
+}
+
+model SupplierPayment {
+  id             String        @id @default(cuid())
+  billId         String
+  bill           SupplierBill  @relation(fields: [billId], references: [id])
+  date           DateTime      @db.Date
+  amount         Decimal       @db.Decimal(14, 2)
+  method         PaymentMethod
+  reference      String?
+  journalEntryId String?
+  createdById    String?
+  createdAt      DateTime      @default(now())
+}
+
+// ───────────────────────── Phase 5: CRM, events, channels, revenue ─────────────────────────
+
+model LoyaltyAccount {
+  id             String       @id @default(cuid())
+  guestId        String       @unique
+  guest          Guest        @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  number         String       @unique
+  points         Int          @default(0)
+  lifetimePoints Int          @default(0)
+  joinedAt       DateTime     @default(now())
+  txns           LoyaltyTxn[]
+}
+
+model LoyaltyTxn {
+  id          String         @id @default(cuid())
+  accountId   String
+  account     LoyaltyAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  type        String // EARN | REDEEM | ADJUST
+  points      Int // signed
+  sourceType  String?
+  sourceId    String?
+  note        String?
+  createdById String?
+  createdAt   DateTime       @default(now())
+
+  @@unique([accountId, sourceType, sourceId])
+}
+
+model Coupon {
+  id          String    @id @default(cuid())
+  propertyId  String
+  property    Property  @relation(fields: [propertyId], references: [id])
+  code        String
+  description String?
+  percentOff  Decimal?  @db.Decimal(5, 2)
+  amountOff   Decimal?  @db.Decimal(14, 2)
+  validFrom   DateTime? @db.Date
+  validTo     DateTime? @db.Date
+  minNights   Int       @default(1)
+  maxUses     Int?
+  usedCount   Int       @default(0)
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+
+  @@unique([propertyId, code])
+}
+
+model Campaign {
+  id          String    @id @default(cuid())
+  propertyId  String
+  property    Property  @relation(fields: [propertyId], references: [id])
+  name        String
+  channel     String // EMAIL | SMS | WHATSAPP
+  segment     String // ALL | VIP | RETURNING | LOYALTY | CORPORATE
+  subject     String?
+  body        String
+  couponCode  String?
+  status      String    @default("DRAFT") // DRAFT | SENT
+  recipients  Int       @default(0)
+  delivery    String? // NOT_CONFIGURED | QUEUED
+  sentAt      DateTime?
+  createdById String?
+  createdAt   DateTime  @default(now())
+}
+
+model GuestFeedback {
+  id            String    @id @default(cuid())
+  propertyId    String
+  property      Property  @relation(fields: [propertyId], references: [id])
+  guestId       String?
+  guest         Guest?    @relation(fields: [guestId], references: [id])
+  reservationId String?
+  kind          String // FEEDBACK | COMPLAINT
+  category      String // ROOM | SERVICE | FOOD | CLEANLINESS | STAFF | NOISE | BILLING | OTHER
+  rating        Int?
+  comments      String
+  status        String    @default("OPEN") // OPEN | RESOLVED
+  resolution    String?
+  resolvedById  String?
+  resolvedAt    DateTime?
+  createdById   String?
+  createdAt     DateTime  @default(now())
+
+  @@index([propertyId, createdAt])
+}
+
+model EventVenue {
+  id         String         @id @default(cuid())
+  propertyId String
+  property   Property       @relation(fields: [propertyId], references: [id])
+  name       String
+  capacity   Int
+  hourlyRate Decimal        @db.Decimal(14, 2)
+  isActive   Boolean        @default(true)
+  bookings   EventBooking[]
+
+  @@unique([propertyId, name])
+}
+
+enum EventStatus {
+  TENTATIVE
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+}
+
+model EventBooking {
+  id          String      @id @default(cuid())
+  propertyId  String
+  property    Property    @relation(fields: [propertyId], references: [id])
+  number      String
+  venueId     String
+  venue       EventVenue  @relation(fields: [venueId], references: [id])
+  title       String
+  eventType   String // CONFERENCE | WEDDING | MEETING | BANQUET | PARTY | OTHER
+  clientName  String
+  company     String?
+  email       String?
+  phone       String?
+  date        DateTime    @db.Date
+  startMinute Int
+  endMinute   Int
+  attendees   Int
+  status      EventStatus @default(TENTATIVE)
+  notes       String?
+  folioId     String      @unique
+  folio       Folio       @relation(fields: [folioId], references: [id])
+  invoiceId   String?
+  createdById String?
+  createdAt   DateTime    @default(now())
+  items       EventItem[]
+
+  @@unique([propertyId, number])
+  @@index([venueId, date])
+}
+
+model EventItem {
+  id             String       @id @default(cuid())
+  eventId        String
+  event          EventBooking @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  description    String
+  quantity       Decimal      @db.Decimal(14, 2)
+  unitPrice      Decimal      @db.Decimal(14, 2)
+  amount         Decimal      @db.Decimal(14, 2)
+  revenueAccount String       @default("4400")
+  postedAt       DateTime?
+}
+
+model ChannelConnection {
+  id         String               @id @default(cuid())
+  propertyId String
+  property   Property             @relation(fields: [propertyId], references: [id])
+  channel    String // BOOKING_COM | EXPEDIA | AGODA | AIRBNB
+  hotelCode  String? // the property id at the OTA (not a secret)
+  isEnabled  Boolean              @default(false)
+  createdAt  DateTime             @default(now())
+  mappings   ChannelRoomMapping[]
+  logs       ChannelSyncLog[]
+
+  @@unique([propertyId, channel])
+}
+
+model ChannelRoomMapping {
+  id              String            @id @default(cuid())
+  connectionId    String
+  connection      ChannelConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  roomTypeId      String
+  channelRoomCode String
+  ratePlanCode    String?
+  markupPercent   Decimal           @default(0) @db.Decimal(6, 2)
+
+  @@unique([connectionId, roomTypeId])
+}
+
+model ChannelSyncLog {
+  id           String            @id @default(cuid())
+  connectionId String
+  connection   ChannelConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  kind         String // AVAILABILITY | RATES | RESERVATIONS
+  status       String // NOT_CONFIGURED | SUCCESS | FAILED
+  message      String
+  createdAt    DateTime          @default(now())
+
+  @@index([connectionId, createdAt])
+}
+
+model CompetitorRate {
+  id         String   @id @default(cuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id])
+  competitor String
+  date       DateTime @db.Date
+  roomLabel  String
+  price      Decimal  @db.Decimal(14, 2)
+  createdAt  DateTime @default(now())
+
+  @@index([propertyId, date])
 }
