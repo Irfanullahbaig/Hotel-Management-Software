@@ -4,6 +4,16 @@ A production-oriented hotel management platform: reservations, front desk, rooms
 
 **Status: Phase 1 (core hotel operations) is implemented.** See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full-system design, schema, RBAC model and workflows, and the phase plan.
 
+## Screenshots
+
+| Dashboard | Room board |
+|---|---|
+| ![Dashboard](docs/screenshots/dashboard.png) | ![Room board](docs/screenshots/room-board.png) |
+
+| Reservation calendar | Check-out |
+|---|---|
+| ![Calendar](docs/screenshots/calendar.png) | ![Check-out](docs/screenshots/checkout.png) |
+
 ## What works today
 
 | Area | Highlights |
