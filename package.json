@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "prebuild": "node scripts/embed-migrations.mjs",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -17,12 +18,14 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.3.16",
     "@prisma/client": "^6.16.2",
     "bcryptjs": "^3.0.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "lucide-react": "^0.544.0",
     "next": "^15.5.29",
+    "pglite-prisma-adapter": "^0.6.1",
     "react": "^19.1.10",
     "react-dom": "^19.1.10",
     "recharts": "^3.2.1",

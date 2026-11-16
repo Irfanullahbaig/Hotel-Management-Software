@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
-  serverExternalPackages: ["bcryptjs"],
+  serverExternalPackages: ["bcryptjs", "@electric-sql/pglite", "pglite-prisma-adapter"],
   async headers() {
     return [
       {
