@@ -10,8 +10,8 @@ import { addDays, businessToday } from "../src/lib/dates";
 const prisma = new PrismaClient();
 
 async function main() {
-  const adminEmail = process.env.SEED_ADMIN_EMAIL ?? "admin@hotel.local";
-  const adminPassword = process.env.SEED_ADMIN_PASSWORD ?? "ChangeMe-2026";
+  // Default logins. All share one password; override it with SEED_DEFAULT_PASSWORD.
+  const defaultPassword = process.env.SEED_DEFAULT_PASSWORD ?? "passpass@123";
   const withDemo = process.env.SEED_DEMO !== "false";
 
   // Permissions catalogue
@@ -51,21 +51,17 @@ async function main() {
 
   // Users
   const roleByKey = new Map((await prisma.role.findMany({ where: { organizationId: org.id } })).map((r) => [r.key, r]));
-  const users: { email: string; name: string; role: string; superAdmin?: boolean; password: string }[] = [
-    { email: adminEmail, name: "System Administrator", role: "super_admin", superAdmin: true, password: adminPassword },
+  const users: { email: string; name: string; role: string; superAdmin?: boolean }[] = [
+    { email: "admin@hms.com", name: "System Administrator", role: "super_admin", superAdmin: true },
+    { email: "gm@hms.com", name: "General Manager", role: "general_manager" },
+    { email: "frontdesk@hms.com", name: "Receptionist", role: "receptionist" },
+    { email: "housekeeping@hms.com", name: "Housekeeping Manager", role: "housekeeping_manager" },
+    { email: "accounts@hms.com", name: "Accountant", role: "accountant" },
   ];
-  if (withDemo) {
-    users.push(
-      { email: "gm@hotel.local", name: "Demo General Manager", role: "general_manager", password: "Demo-Pass-2026" },
-      { email: "frontdesk@hotel.local", name: "Demo Receptionist", role: "receptionist", password: "Demo-Pass-2026" },
-      { email: "housekeeping@hotel.local", name: "Demo Housekeeping Manager", role: "housekeeping_manager", password: "Demo-Pass-2026" },
-      { email: "accounts@hotel.local", name: "Demo Accountant", role: "accountant", password: "Demo-Pass-2026" },
-    );
-  }
   for (const u of users) {
     const existing = await prisma.user.findUnique({ where: { email: u.email } });
     const user = existing ?? (await prisma.user.create({
-      data: { organizationId: org.id, email: u.email, name: u.name, isSuperAdmin: !!u.superAdmin, passwordHash: await bcrypt.hash(u.password, 12), mustChangePassword: !!u.superAdmin && !process.env.SEED_ADMIN_PASSWORD },
+      data: { organizationId: org.id, email: u.email, name: u.name, isSuperAdmin: !!u.superAdmin, passwordHash: await bcrypt.hash(defaultPassword, 12), mustChangePassword: false },
     }));
     await prisma.userProperty.upsert({ where: { userId_propertyId: { userId: user.id, propertyId: property.id } }, update: {}, create: { userId: user.id, propertyId: property.id } });
     const role = roleByKey.get(u.role)!;
@@ -102,9 +98,9 @@ async function main() {
   }
 
   if (withDemo && (await prisma.reservation.count({ where: { propertyId: property.id } })) === 0) {
-    await seedDemo(property.id, (await prisma.user.findUniqueOrThrow({ where: { email: "frontdesk@hotel.local" } })).id);
+    await seedDemo(property.id, (await prisma.user.findUniqueOrThrow({ where: { email: "frontdesk@hms.com" } })).id);
   }
-  console.log(`Seed complete. Sign in as ${adminEmail}${process.env.SEED_ADMIN_PASSWORD ? "" : ` / ${adminPassword} (change it after first login)`}.`);
+  console.log(`Seed complete. Default logins: ${users.map((u) => u.email).join(", ")}${process.env.SEED_DEFAULT_PASSWORD ? "" : ` / password ${defaultPassword}`}.`);
 }
 
 async function seedDemo(propertyId: string, userId: string) {

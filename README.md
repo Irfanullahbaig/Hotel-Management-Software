@@ -51,9 +51,19 @@ npm run db:seed                 # roles, permissions, chart of accounts, rooms, 
 npm run dev
 ```
 
-The seed prints the admin sign-in. Set `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` to choose them, and `SEED_DEMO=false` to skip demo users and bookings. Demo records are flagged `isDemo` and labelled "Demo" in the UI.
+### Default logins
 
-Demo users (password `Demo-Pass-2026`): `gm@hotel.local`, `frontdesk@hotel.local`, `housekeeping@hotel.local`, `accounts@hotel.local`.
+The seed creates these users, all with the password `passpass@123` (set `SEED_DEFAULT_PASSWORD` to use a different one):
+
+| Email | Role |
+|---|---|
+| `admin@hms.com` | System Administrator |
+| `gm@hms.com` | General Manager |
+| `frontdesk@hms.com` | Receptionist |
+| `housekeeping@hms.com` | Housekeeping Manager |
+| `accounts@hms.com` | Accountant |
+
+Change these passwords before using the system with real guests. Set `SEED_DEMO=false` to skip demo bookings. Demo records are flagged `isDemo` and labelled "Demo" in the UI.
 
 ## Tests
 
